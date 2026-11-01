@@ -3,25 +3,47 @@ param([string]$Section = "--help")
 switch ($Section) {
     "--create" {
 @'
-=== ГЕНЕРАТОР C++ ===
-:CreateCppClass -n Player -hs Engine/
-:CreateCppClass -n Player -h include/Engine/ -s src/Engine/
-:CreateCppClass -n Player --split --subdir Engine/
-:CreateCppStruct -n Vector2 -h Math/
-:CreateCppEnum -n State
-:CreateCppHeader -n Common
-:CreateCppSource -n Helpers
-:CreateCppInterface -n IRenderer
-:CreateCppTest -n Player
+=== ГЕНЕРАТОРЫ C++ / C# / DevOps ===
+:CreateCpp -c -n Player -p Engine/
+:CreateCpp -s -n Vector2 -p Math/
+:CreateCpp -e -n State
+:CreateCpp -i -n IRenderer
+:CreateCpp --header -n Common
+:CreateCpp --source -n Helpers
+:CreateCpp --test -n Player -p tests/
+:CreateCpp -c -n Renderer -b -sp --subdir Graphics/
+:CreateCSharp -c -n PhotoService -p Services/
+:CreateCSharp -rs -n Point --readonly
 
--n NAME      Имя
--h DIR       Заголовок + необязательный каталог
--s DIR       Исходник + необязательный каталог
--hs DIR      Оба файла + необязательный каталог
---split      Раздельные каталоги
---together   Файлы рядом
---subdir DIR Дополнительная подпапка
-:CreateHelp  Справка внутри Neovim
+:CreateDevOps -df -p .                 Dockerfile
+:CreateDevOps -dc -p deploy/           compose.yaml
+:CreateDevOps -di                     .dockerignore
+:CreateDevOps -gi                     .gitignore
+:CreateDevOps -gl                     .gitlab-ci.yml
+:CreateDevOps -b -n backup -p scripts/
+:CreateDevOps -ps -n deploy -p scripts/
+:CreateDevOps -sd -n app -p deploy/systemd/
+:CreateDevOps -ng -n reverse-proxy -p deploy/nginx/
+:CreateDevOps --help
+DevOps: один вызов — один файл, без запуска и chmod +x.
+-n разрешён только для Bash, PowerShell, systemd и Nginx.
+Язык генераторов: vim.g.devkit_language = "ru" / "en".
+
+-n / --name NAME          Имя типа / файла
+-p / --path DIR           Базовый каталог от корня запуска Neovim
+-ho / --header-only       Только заголовок C++
+-so / --source-only       Только исходник C++
+-b / --both               Оба файла C++
+-sp / --split             Раздельные каталоги include/ и src/
+-tg / --together          Файлы рядом
+--subdir DIR              Вложенный каталог при split
+--test                    Один NAMETest.cpp с GoogleTest (без заголовка)
+-s / --struct             Структура (для обеих основных команд)
+--help                    Справка выбранного генератора
+:GeneratorHelp            Разделы C++ / C# / DevOps встроенной справки
+:GeneratorList            Команды генераторов и служебные команды
+:CreateHelp               Полная текстовая справка
+:CreateRoot               Проверить корень генератора
 '@
     }
     default {
