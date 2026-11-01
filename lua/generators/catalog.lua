@@ -1,4 +1,5 @@
 local M = {}
+local i18n = require("generators.i18n")
 
 M.utility_commands = { "CreateHelp", "CreateRoot", "GeneratorHelp", "GeneratorList" }
 
@@ -33,6 +34,23 @@ Namespace: ближайший родительский .csproj, RootNamespace и
 MSBuild не запускается, using по пути не добавляются. Нужен C# 10+.
 ]],
 }
+local devops_category = {
+    id = "devops", title = "DevOps", order = 30,
+    notes = [[
+Один вызов создаёт один файл в каталоге -p/--path (по умолчанию корень запуска).
+-n/--name разрешён только для Bash, PowerShell, systemd и Nginx.
+Расширение .sh/.ps1/.service/.conf добавляется, если ещё не указано.
+Файлы имеют LF; скрипты не запускаются, исполняемые права не устанавливаются.
+Это минимальные заготовки: заполни значения и проверь перед развёртыванием.
+]],
+    notes_en = [[
+One invocation creates one file under -p/--path (default: the captured launch root).
+-n/--name is accepted only for Bash, PowerShell, systemd and Nginx.
+The .sh/.ps1/.service/.conf extension is appended unless already present.
+Files use LF; scripts are not executed and executable permissions are not set.
+These are minimal stubs: fill in the values and review before deployment.
+]],
+}
 M.commands = {
     { command = "CreateCpp", language = "cpp", category = cpp_category,
         description = "Создать C++ тип, файл или тест GoogleTest",
@@ -46,10 +64,28 @@ M.commands = {
         examples = { ":CreateCSharp -c -n PhotoService -p Services/",
             ":CreateCSharp -i -n IPhotoService -p Interfaces/", ":CreateCSharp -r -n PhotoDto -p Models/",
             ":CreateCSharp -rs -n Point --readonly", ":CreateCSharp -c -n BaseService -a" } },
+    { command = "CreateDevOps", language = "devops", category = devops_category,
+        description = "Создать один файл DevOps с минимальным шаблоном",
+        description_en = "Create one DevOps file with a minimal template",
+        parameters = arguments.parameters(arguments.devops),
+        examples = { ":CreateDevOps -df -p .", ":CreateDevOps --compose -p deploy/", ":CreateDevOps -di",
+            ":CreateDevOps -gi", ":CreateDevOps -gl", ":CreateDevOps -b -n backup -p scripts/",
+            ":CreateDevOps -ps -n deploy -p scripts/", ":CreateDevOps -sd -n familycloud -p deploy/systemd/",
+            ":CreateDevOps -ng -n reverse-proxy -p deploy/nginx/", ":CreateDevOps --help" } },
 }
+
+local function localized(metadata)
+    local entry = vim.deepcopy(metadata)
+    entry.description = i18n.field(entry, "description")
+    entry.category.notes = i18n.field(entry.category, "notes")
+    for _, parameter in ipairs(entry.parameters) do parameter.description = i18n.field(parameter, "description") end
+    return entry
+end
+
 function M.help(language)
-    for _, entry in ipairs(M.commands) do
-        if entry.language == language then
+    for _, metadata in ipairs(M.commands) do
+        if metadata.language == language then
+            local entry = localized(metadata)
             local lines = { ":" .. entry.command .. " — " .. entry.description, "" }
             for _, parameter in ipairs(entry.parameters) do lines[#lines + 1] = parameter.name .. "  " .. parameter.description end
             lines[#lines + 1] = ""
@@ -99,7 +135,7 @@ function M.register(metadata, callback, opts)
     local entry = vim.deepcopy(metadata)
     local command_opts = { nargs = "*" }
     for key, value in pairs(opts or {}) do command_opts[key] = value end
-    command_opts.desc = entry.description
+    command_opts.desc = i18n.field(entry, "description")
     vim.api.nvim_create_user_command(entry.command, callback, command_opts)
     entries[entry.command] = entry
     changed()

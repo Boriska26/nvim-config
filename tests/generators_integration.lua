@@ -222,7 +222,7 @@ local function run()
 static_assert(std::is_abstract_v<IWorld>);
 ]])
 
-    -- Exercise only the two public generators and every C++ type through CreateCpp.
+    -- Exercise the public generators and every C++ type through CreateCpp.
     local command_root = root("commands")
     vim.fn.chdir(command_root)
     require("generators").setup()
@@ -241,7 +241,7 @@ static_assert(std::is_abstract_v<IWorld>);
     end
     local main_count = 0
     for _ in ipairs(require("generators.catalog").generators()) do main_count = main_count + 1 end
-    assert(main_count == 2, "registry must contain only CreateCpp and CreateCSharp")
+    assert(main_count == 3, "registry must contain CreateCpp, CreateCSharp and CreateDevOps")
     for _, kind in ipairs({ "class", "struct", "enum", "interface", "header", "source", "test" }) do
         local name = "Native_" .. kind
         vim.cmd("CreateCpp --" .. kind .. " -n " .. name .. " -p Types")

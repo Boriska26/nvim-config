@@ -6,7 +6,7 @@ A personal Neovim configuration built for C#, C++, and DevOps development, with 
 
 - **C# Development** — Roslyn LSP, IntelliSense, diagnostics, and code navigation.
 - **C++ Development** — configurable class, header, and source file generators.
-- **File Generation** — `:CreateCpp`, `:CreateCSharp`, project JSON settings and GoogleTest templates.
+- **File Generation** — `:CreateCpp`, `:CreateCSharp`, `:CreateDevOps`, project JSON settings and minimal templates.
 - **Navigation** — Telescope fuzzy search, file explorer, and buffer management.
 - **Integrated Terminal** — toggleable terminal without unnecessary buffer tabs.
 - **Appearance** — Tokyo Night theme, statusline, and syntax highlighting.
@@ -47,6 +47,8 @@ lua/generators/
   namespace.lua              Literal .csproj namespace discovery (no MSBuild execution)
   identifiers.lua            C++/C# identifier validation and namespace escaping
   cpp.lua / csharp.lua       Language validation and source templates
+  devops.lua                 Nine single-file DevOps templates and filename rules
+  i18n.lua                   Shared RU/EN generator text layer
   writer.lua                 Exclusive file creation, preflight and rollback
   service.lua                Shared generation pipeline
   catalog.lua                Command metadata and help text
@@ -69,7 +71,8 @@ with both `<Space>tt` and `<Space>ее` shortcuts. Russian normal/visual command
 
 The generator captures the working directory once when Neovim starts. All output
 paths remain relative to that root after `:cd` and repeated setup. `:CreateRoot`
-shows it. New commands require one explicit type flag and `-n/--name`.
+shows it. C++ and C# require one explicit type flag and `-n/--name`. DevOps requires one
+file-type flag; its name is optional or fixed, as described below.
 Flags are exact tokens: `-rs`, `-ho`, `-so`, `-sp` and `-tg` are not bundled
 single-letter options. Long value options also support `--name=Player`.
 Duplicate options, incompatible options and unknown arguments are rejected.
@@ -173,6 +176,94 @@ Predictable namespace policies:
   with `@`. Reserved namespace segments are escaped automatically. Invalid project
   names or directory segments are rejected instead of silently renamed.
 
+### DevOps — `:CreateDevOps`
+
+One invocation creates exactly **one file**, opens it for editing, and preserves
+Neovim's working directory. No stack detection, infrastructure generation,
+interactive prompts, script execution or executable permission changes occur.
+
+| Flags | Default filename | Custom `-n/--name` |
+| --- | --- | --- |
+| `-df`, `--dockerfile` | `Dockerfile` | Not accepted |
+| `-dc`, `--compose` | `compose.yaml` | Not accepted |
+| `-di`, `--dockerignore` | `.dockerignore` | Not accepted |
+| `-gi`, `--gitignore` | `.gitignore` | Not accepted |
+| `-gl`, `--gitlab-ci` | `.gitlab-ci.yml` | Not accepted |
+| `-b`, `--bash` | `script.sh` | Appends `.sh` |
+| `-ps`, `--powershell` | `script.ps1` | Appends `.ps1` |
+| `-sd`, `--systemd` | `app.service` | Appends `.service` |
+| `-ng`, `--nginx` | `nginx.conf` | Appends `.conf` |
+
+Common options are `-p/--path DIR` (default `.`), `-n/--name NAME` where accepted,
+and `--help`. Each alias is an exact flag; two type selectors or repeated options
+are errors. Fixed-name templates reject `-n` even when it matches the default.
+Custom names are basenames: put directory components in `-p`. A matching extension
+is preserved, case-insensitively; another extension gets the required suffix
+(e.g. `backup.other` becomes `backup.other.sh`). Unicode filenames are supported.
+
+```vim
+:CreateDevOps -df -p .
+:CreateDevOps --compose -p deploy/
+:CreateDevOps -di
+:CreateDevOps -gi
+:CreateDevOps -gl
+:CreateDevOps -b -n backup -p scripts/
+:CreateDevOps -ps -n deploy -p scripts/
+:CreateDevOps -sd -n familycloud -p deploy/systemd/
+:CreateDevOps -ng -n reverse-proxy -p deploy/nginx/
+:CreateDevOps --help
+```
+
+Templates contain the specified minimal Alpine Dockerfile, a Compose `app` service
+(without the obsolete `version` field), ignore-file comments, GitLab's `build`
+stage, a strict-mode Bash skeleton, a PowerShell comment, a systemd service stub,
+and an Nginx reverse proxy block. Output uses UTF-8 and LF. They contain no secrets
+or inferred framework dependencies. Review placeholders such as `my-image:latest`,
+`/path/to/application` and the upstream address before deployment; these are
+starting points rather than validated production configurations.
+
+DevOps shares project JSON validation, captured-root paths, exclusive file creation
+and rollback with C++/C#. No extra DevOps JSON settings are defined in this version.
+Directories are created as needed; only the requested file is written. `..`, absolute
+paths, unsafe names, and symlinks outside the captured root are rejected.
+`--help` works without valid project configuration. Completion offers the common
+and template flags; this version's shared completion does not complete path values.
+
+### Generator language
+
+Russian (`ru`) is the default. To switch to English inside a running Neovim:
+
+```vim
+:let g:devkit_language = 'en'
+:CreateDevOps --help
+```
+
+To switch back to Russian:
+
+```vim
+:let g:devkit_language = 'ru'
+```
+
+Close and reopen an existing help window to display the selected language.
+
+To keep English after restarting Neovim, add this **at the top of `init.lua`,
+before the first `require(...)`**:
+
+```lua
+vim.g.devkit_language = "en"
+```
+
+For a single launch, use `nvim --cmd 'let g:devkit_language="en"' .`.
+Values other than `en` fall back to Russian.
+DevOps descriptions, parameter hints, errors, creation notices and help follow this
+setting, as do shared parser/path/config/writer messages and Generation labels.
+Commands, flags and generated template bytes remain the same in both languages.
+Existing C++/C# type-specific descriptions and other help sections retain their
+Russian text. The shared text layer is `lua/generators/i18n.lua`.
+Help and messages use the selected language immediately when shown again.
+To also refresh the Ex command descriptions registered earlier, run
+`:lua require("generators").setup()`; this is not required for `--help`.
+
 ### Project configuration and file safety
 
 `.nvim-generator.json` is read as JSON data from the captured launch root:
@@ -199,8 +290,8 @@ are removed if a later write fails. Output files are not added to CMake or `.csp
 
 ### Public commands and help
 
-The public generation API has exactly two commands: `:CreateCpp` and
-`:CreateCSharp`. Choose C++ types using `--class`, `--struct`, `--enum`,
+The public generation API has three commands: `:CreateCpp`, `:CreateCSharp`
+and `:CreateDevOps`. Choose C++ types using `--class`, `--struct`, `--enum`,
 `--interface`, `--header`, `--source` or `--test`.
 `-s` means struct; output selection uses `-ho`, `-so` or `-b`.
 
@@ -220,9 +311,9 @@ Compiling this template requires GoogleTest.
 :GeneratorList
 ```
 
-`CreateHelp` prints the C++ and C# references. `GeneratorHelp` opens the existing
-Generation menu. `GeneratorList` lists the two generators and the help/root
-utilities. The registry, Ex completion and help expose the same two generators.
+`CreateHelp` prints the C++, C# and DevOps references. `GeneratorHelp` opens the existing
+Generation menu. `GeneratorList` lists the three generators and the help/root
+utilities. The registry, Ex completion and help expose the same three generators.
 
 ## Built-in Help
 
@@ -240,9 +331,9 @@ window. Each row shows the command that opens its section directly:
 | Git | `:GitHelp` |
 | Appearance | `:AppearanceHelp` |
 
-Generation reads metadata for C++ and C# commands from the same registry:
-`DevKitHelp → Generation → C++ / C# → commands, parameters and examples`.
-DevOps is not implemented and has no category. Empty categories are omitted.
+Generation reads metadata from the same registry:
+`DevKitHelp → Generation → C++ / C# / DevOps → commands, parameters and examples`.
+Empty categories are omitted.
 
 Use `j`/`k` or the arrow keys and Enter to select a menu item. In a reference page,
 `j`/`k` and arrows scroll, `h` or Backspace returns one level, and `q` or Esc

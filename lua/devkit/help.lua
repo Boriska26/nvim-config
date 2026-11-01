@@ -1,5 +1,6 @@
 local M = {}
 local sections = require("devkit.help_data")
+local i18n = require("generators.i18n")
 local namespace = vim.api.nvim_create_namespace("DevKitHelp")
 local state = { selections = { main = 1, generation = 1 } }
 local menu_start = 4
@@ -26,7 +27,7 @@ local function geometry()
         col = math.max(0, math.floor((vim.o.columns - width - 2) / 2)),
         border = "rounded", style = "minimal", zindex = 60,
         title = " DevKitHelp ", title_pos = "center",
-        footer = width >= 65 and " j/k ↑/↓ Enter | h/BS: назад | q/Esc: закрыть " or " q/Esc: закрыть | h: назад ",
+        footer = i18n.get(width >= 65 and "help_footer" or "help_footer_short"),
         footer_pos = "center",
     }
 end
@@ -87,20 +88,20 @@ end
 
 local function generator_content(category)
     local lines = { "Generation > " .. category.title .. "  :GeneratorHelp",
-        "Ex: команда после ':' из NORMAL. Backspace: категории генераторов.", "" }
+        i18n.get("generation_hint"), "" }
     for _, entry in ipairs(category.generators) do
         lines[#lines + 1] = ":" .. entry.command
-        lines[#lines + 1] = "  Назначение: " .. entry.description
-        lines[#lines + 1] = "  Параметры:"
-        if #entry.parameters == 0 then lines[#lines + 1] = "    Нет параметров." end
+        lines[#lines + 1] = "  " .. i18n.get("purpose") .. " " .. i18n.field(entry, "description")
+        lines[#lines + 1] = "  " .. i18n.get("parameters")
+        if #entry.parameters == 0 then lines[#lines + 1] = "    " .. i18n.get("no_parameters") end
         for _, parameter in ipairs(entry.parameters) do
-            lines[#lines + 1] = "    " .. parameter.name .. " — " .. parameter.description
+            lines[#lines + 1] = "    " .. parameter.name .. " — " .. i18n.field(parameter, "description")
         end
-        lines[#lines + 1] = "  Примеры:"
+        lines[#lines + 1] = "  " .. i18n.get("examples")
         for _, example in ipairs(entry.examples) do lines[#lines + 1] = "    " .. example end
         lines[#lines + 1] = ""
     end
-    append_text(lines, category.notes)
+    append_text(lines, i18n.field(category, "notes"))
     return lines
 end
 
@@ -160,11 +161,11 @@ function M.open(id, category_id)
         lines = generator_content(category)
     elseif categories then
         menu = { key = "generation", items = categories }
-        lines = { "Generation  :GeneratorHelp", "Выберите категорию генераторов и нажмите Enter.", "" }
+        lines = { "Generation  :GeneratorHelp", i18n.get("generation_select"), "" }
         for _, item in ipairs(categories) do
-            lines[#lines + 1] = string.format("  %-18s %d команд", item.title, #item.generators)
+            lines[#lines + 1] = string.format("  %-18s %s", item.title, i18n.get("command_count", #item.generators))
         end
-        if #categories == 0 then lines[#lines + 1] = "Зарегистрированных генераторов нет." end
+        if #categories == 0 then lines[#lines + 1] = i18n.get("no_generators") end
     elseif section then
         lines = content(section)
     else

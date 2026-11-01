@@ -20,6 +20,8 @@ function M.generate(root, language, args)
     local entries
     if language == "cpp" then
         entries, err = require("generators.cpp").plan(parsed, settings.cpp)
+    elseif language == "devops" then
+        entries, err = require("generators.devops").plan(parsed)
     else
         local csharp = require("generators.csharp")
         local valid

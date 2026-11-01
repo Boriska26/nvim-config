@@ -101,7 +101,7 @@ vim = {
 
 require("generators").setup()
 
--- Exactly two generating commands; the remaining commands are help/root utilities.
+-- Exactly three generating commands; the remaining commands are help/root utilities.
 for _, suffix in ipairs({ "Class", "Struct", "Enum", "Header", "Source", "Interface", "Test" }) do
     assert(not commands["CreateCpp" .. suffix], "removed command was registered: " .. suffix)
 end

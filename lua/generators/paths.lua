@@ -1,31 +1,32 @@
 -- All paths are project-root-relative. Reject paths that can escape that root.
 local M = {}
+local i18n = require("generators.i18n")
 
 function M.clean(value)
     if type(value) ~= "string" or value == "" then
-        return nil, "Путь должен быть непустой строкой"
+        return nil, i18n.get("empty_path")
     end
     value = value:gsub("\\", "/")
     if value:sub(1, 1) == "/" or value:match("^[A-Za-z]:") or value:sub(1, 2) == "//" then
-        return nil, "Абсолютные пути не разрешены: " .. value
+        return nil, i18n.get("absolute_path", value)
     end
     if value:find("[%c:*?\"<>|]") then
-        return nil, "Недопустимые символы в пути: " .. value
+        return nil, i18n.get("invalid_path", value)
     end
 
     local parts = {}
     for item in value:gmatch("[^/]+") do
         if item == ".." then
-            return nil, "Выход за пределы проекта запрещён: " .. value
+            return nil, i18n.get("outside_path", value)
         end
         if item ~= "." then
             if item:match("[%. ]$") then
-                return nil, "Папка не может заканчиваться точкой или пробелом (Windows): " .. item
+                return nil, i18n.get("trailing_path", item)
             end
             local upper = (item:match("^([^.]*)") or item):upper()
             if upper:match("^CON$") or upper:match("^PRN$") or upper:match("^AUX$") or
                 upper:match("^NUL$") or upper:match("^COM[1-9]$") or upper:match("^LPT[1-9]$") then
-                return nil, "Зарезервированное имя Windows: " .. item
+                return nil, i18n.get("reserved_path", item)
             end
             table.insert(parts, item)
         end
@@ -63,10 +64,10 @@ function M.safe_parent(root, directory)
     local ancestor = directory
     while not vim.uv.fs_stat(ancestor) do
         local parent = vim.fn.fnamemodify(ancestor, ":h")
-        if parent == ancestor then return nil, "Не найден существующий родитель: " .. directory end
+        if parent == ancestor then return nil, i18n.get("no_parent", directory) end
         ancestor = parent
     end
-    if not M.within(root, ancestor) then return nil, "Каталог выходит за пределы проекта (symlink): " .. directory end
+    if not M.within(root, ancestor) then return nil, i18n.get("symlink_path", directory) end
     return true
 end
 

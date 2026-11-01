@@ -1,4 +1,5 @@
 local M = {}
+local i18n = require("generators.i18n")
 
 function M.parse(args, schema)
     local flags, result, seen = {}, {}, {}
@@ -11,20 +12,20 @@ function M.parse(args, schema)
         local flag, value = token:match("^(%-%-[^=]+)=(.*)$")
         flag = flag or token
         local entry = flags[flag]
-        if not entry then return nil, "Неизвестный аргумент: " .. token .. " (см. --help)" end
+        if not entry then return nil, i18n.get("unknown_argument", token) end
         if seen[entry.key] then
-            return nil, "Повторные или несовместимые аргументы: " .. seen[entry.key] .. " и " .. flag
+            return nil, i18n.get("conflicting_arguments", seen[entry.key], flag)
         end
-        if not entry.takes and value ~= nil then return nil, flag .. " не принимает значение" end
+        if not entry.takes and value ~= nil then return nil, i18n.get("no_value", flag) end
         if entry.takes and value == nil then
             local following = args[index + 1]
             if following and following:sub(1, 1) ~= "-" then
                 value, index = following, index + 1
             elseif entry.takes == "required" then
-                return nil, "После " .. flag .. " требуется значение"
+                return nil, i18n.get("value_required", flag)
             end
         end
-        if value == "" then return nil, "Пустое значение после " .. flag end
+        if value == "" then return nil, i18n.get("empty_value", flag) end
         seen[entry.key] = flag
         result[entry.key] = value or entry.value or true
         index = index + 1

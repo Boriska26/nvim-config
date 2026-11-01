@@ -1,12 +1,12 @@
 -- Flags are exact tokens: -rs and -ho are never split into letters.
 local M = {}
-local function option(key, flags, description, takes, value)
-    return { key = key, flags = flags, description = description, takes = takes, value = value }
+local function option(key, flags, description, takes, value, description_en)
+    return { key = key, flags = flags, description = description, description_en = description_en, takes = takes, value = value }
 end
 local common = {
-    option("name", { "-n", "--name" }, "Имя типа или файла", "required"),
-    option("path", { "-p", "--path" }, "Базовый каталог относительно корня запуска", "required"),
-    option("help", { "--help" }, "Справка без создания файлов"),
+    option("name", { "-n", "--name" }, "Имя типа или файла", "required", nil, "Type or file name"),
+    option("path", { "-p", "--path" }, "Базовый каталог относительно корня запуска", "required", nil, "Directory relative to the captured launch root"),
+    option("help", { "--help" }, "Справка без создания файлов", nil, nil, "Show help without creating files"),
 }
 local function schema(options)
     for _, entry in ipairs(common) do options[#options + 1] = entry end
@@ -44,11 +44,19 @@ M.csharp = schema({
     option("readonly", { "--readonly" }, "readonly struct или record struct"),
     option("ref", { "--ref" }, "ref struct (не record struct)"),
 })
+M.devops = {}
+for _, template in ipairs(require("generators.devops").templates) do
+    M.devops[#M.devops + 1] = option("kind", template.flags,
+        template.filename .. ": " .. template.description, nil, template.kind,
+        template.filename .. ": " .. template.description_en)
+end
+schema(M.devops)
 function M.parameters(options)
     local result = {}
     for _, entry in ipairs(options) do
         local suffix = entry.takes == "required" and " VALUE" or entry.takes == "optional" and " [DIR]" or ""
-        result[#result + 1] = { name = table.concat(entry.flags, " / ") .. suffix, description = entry.description }
+        result[#result + 1] = { name = table.concat(entry.flags, " / ") .. suffix,
+            description = entry.description, description_en = entry.description_en }
     end
     return result
 end

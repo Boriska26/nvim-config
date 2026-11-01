@@ -47,9 +47,9 @@ local function run()
 
     require("generators").setup()
     local initial = categories()
-    assert(#catalog.categories() == 2 and #initial.cpp.generators == 1 and #initial.csharp.generators == 1)
-    assert(not initial.testgens and not initial.devops)
-    -- Check that every documented C++/C# example parses using the real argument parser.
+    assert(#catalog.categories() == 3 and #initial.cpp.generators == 1 and #initial.csharp.generators == 1 and #initial.devops.generators == 1)
+    assert(not initial.testgens and not initial.extra)
+    -- Check that every documented generator example parses using the real argument parser.
     for _, entry in ipairs(catalog.generators()) do
         for _, example in ipairs(entry.examples) do
             local args = vim.split(example, "%s+", { trimempty = true })
@@ -72,18 +72,18 @@ local function run()
     assert(calls == 1, "generator handler was not registered")
     assert(vim.api.nvim_get_current_win() == win and vim.api.nvim_get_current_buf() == buf)
 
-    local devops = {
-        command = "DevKitTestDevOpsGenerator",
-        category = { id = "devops", title = "DevOps", order = 30 },
-        description = "Test fixture for DevOps registration", parameters = {},
-        examples = { ":DevKitTestDevOpsGenerator" },
+    local extra = {
+        command = "DevKitTestExtraGenerator",
+        category = { id = "extra", title = "Extra templates", order = 40 },
+        description = "Test fixture for extra category registration", parameters = {},
+        examples = { ":DevKitTestExtraGenerator" },
     }
-    catalog.register(devops, function() end, { nargs = 0 })
-    assert(text():find("DevOps", 1, true), "DevOps category did not appear automatically")
+    catalog.register(extra, function() end, { nargs = 0 })
+    assert(text():find("Extra templates", 1, true), "extra category did not appear automatically")
     local all = categories()
-    assert(#catalog.categories() == 4 and #all.testgens.generators == 1 and #all.devops.generators == 1)
+    assert(#catalog.categories() == 5 and #all.testgens.generators == 1 and #all.extra.generators == 1)
     local listed = vim.api.nvim_exec2("GeneratorList", { output = true }).output
-    assert(listed:find(fixture.command, 1, true) and listed:find(devops.command, 1, true))
+    assert(listed:find(fixture.command, 1, true) and listed:find(extra.command, 1, true))
 
     -- Registration snapshots metadata; later caller mutations must not change help.
     fixture.description = "mutated outside the registry"
@@ -107,12 +107,12 @@ local function run()
     assert(text():find("Generation  :GeneratorHelp", 1, true), "removed category left an orphan page")
 
     -- Even external removal cannot leave an unavailable command in the catalog views.
-    vim.api.nvim_del_user_command(devops.command)
+    vim.api.nvim_del_user_command(extra.command)
     vim.cmd("GeneratorHelp")
-    assert(not categories().devops and not text():find("DevOps", 1, true))
-    assert(not vim.api.nvim_exec2("GeneratorList", { output = true }).output:find(devops.command, 1, true))
-    assert(catalog.unregister(devops.command) and not catalog.unregister(devops.command))
-    assert(#catalog.categories() == 2 and #catalog.generators() == 2)
+    assert(not categories().extra and not text():find("Extra templates", 1, true))
+    assert(not vim.api.nvim_exec2("GeneratorList", { output = true }).output:find(extra.command, 1, true))
+    assert(catalog.unregister(extra.command) and not catalog.unregister(extra.command))
+    assert(#catalog.categories() == 3 and #catalog.generators() == 3)
     keys("<Esc>")
     assert(not vim.api.nvim_buf_is_valid(buf), "generator help buffer leaked")
 end

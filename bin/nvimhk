@@ -83,7 +83,7 @@ g?             Все команды дерева
 EOF
 ;;
  --create) cat <<'EOF'
-=== ГЕНЕРАТОРЫ C++ / C# ===
+=== ГЕНЕРАТОРЫ C++ / C# / DevOps ===
 :CreateCpp -c -n Player -p Engine/
 :CreateCpp -s -n Vector2 -p Math/
 :CreateCpp -e -n State
@@ -94,6 +94,20 @@ EOF
 :CreateCpp -c -n Renderer -b -sp --subdir Graphics/
 :CreateCSharp -c -n PhotoService -p Services/
 :CreateCSharp -rs -n Point --readonly
+
+:CreateDevOps -df -p .                 Dockerfile
+:CreateDevOps -dc -p deploy/           compose.yaml
+:CreateDevOps -di                     .dockerignore
+:CreateDevOps -gi                     .gitignore
+:CreateDevOps -gl                     .gitlab-ci.yml
+:CreateDevOps -b -n backup -p scripts/
+:CreateDevOps -ps -n deploy -p scripts/
+:CreateDevOps -sd -n app -p deploy/systemd/
+:CreateDevOps -ng -n reverse-proxy -p deploy/nginx/
+:CreateDevOps --help
+DevOps: один вызов — один файл, без запуска и chmod +x.
+-n разрешён только для Bash, PowerShell, systemd и Nginx.
+Язык генераторов: vim.g.devkit_language = "ru" / "en".
 
 -n / --name NAME          Имя типа / файла
 -p / --path DIR           Базовый каталог от корня запуска Neovim
@@ -106,7 +120,7 @@ EOF
 --test                    Один NAMETest.cpp с GoogleTest (без заголовка)
 -s / --struct             Структура (для обеих основных команд)
 --help                    Справка выбранного генератора
-:GeneratorHelp            Разделы C++ / C# встроенной справки
+:GeneratorHelp            Разделы C++ / C# / DevOps встроенной справки
 :GeneratorList            Команды генераторов и служебные команды
 :CreateHelp               Полная текстовая справка
 :CreateRoot               Проверить корень генератора
