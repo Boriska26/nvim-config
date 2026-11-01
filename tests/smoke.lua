@@ -91,6 +91,26 @@ vim = {
 }
 
 require("generators").setup()
+
+-- Public help aliases and the command list must remain callable.
+local output = {}
+local original_print = print
+print = function(message) table.insert(output, message) end
+commands.CreateHelp({})
+commands.GeneratorHelp({})
+commands.GeneratorList({})
+commands.CreateRoot({})
+print = original_print
+assert(output[1] == output[2], "GeneratorHelp must alias CreateHelp")
+assert(output[1]:find(":CreateCppClass", 1, true))
+local listed = {}
+for command in output[3]:gmatch("[^\n]+") do
+    assert(commands[command], "listed command is not registered: " .. command)
+    listed[command] = true
+end
+for command in pairs(commands) do assert(listed[command], "command is not listed: " .. command) end
+assert(output[4]:find(temp, 1, true), "CreateRoot must show the captured project root")
+
 local function run(command, ...)
     local previous = #notifications
     assert(commands[command], "missing command: " .. command)

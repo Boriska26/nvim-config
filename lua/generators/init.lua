@@ -186,9 +186,19 @@ function M.setup()
         print("Корень генератора: " .. root)
     end, { desc = "Показать корень генератора" })
 
-    vim.api.nvim_create_user_command("CreateHelp", function()
+    local function show_help()
         print(help_text)
-    end, { desc = "Справка по генератору C++" })
+    end
+
+    vim.api.nvim_create_user_command("CreateHelp", show_help, { desc = "Справка по генератору C++" })
+    vim.api.nvim_create_user_command("GeneratorHelp", show_help, { desc = "Справка по генератору C++" })
+
+    vim.api.nvim_create_user_command("GeneratorList", function()
+        local commands = { "CreateHelp", "CreateRoot", "GeneratorHelp", "GeneratorList" }
+        for command in pairs(kinds) do table.insert(commands, command) end
+        table.sort(commands)
+        print(table.concat(commands, "\n"))
+    end, { desc = "Список команд генератора C++" })
 end
 
 return M
