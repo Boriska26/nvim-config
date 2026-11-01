@@ -26,6 +26,8 @@ end
 vim = {
     api = {
         nvim_create_user_command = function(name, callback) commands[name] = callback end,
+        nvim_get_commands = function() return commands end,
+        nvim_exec_autocmds = function() end,
     },
     notify = function(message, level)
         table.insert(notifications, { message = message, level = level })
@@ -74,6 +76,13 @@ vim = {
         end
         return result
     end,
+    deep_equal = function(a, b)
+        if type(a) ~= type(b) then return false end
+        if type(a) ~= "table" then return a == b end
+        for key, value in pairs(a) do if not vim.deep_equal(value, b[key]) then return false end end
+        for key in pairs(b) do if a[key] == nil then return false end end
+        return true
+    end,
     json = {
         decode = function(s)
             if not s:match('^%s*{') then error('invalid JSON') end
@@ -92,24 +101,35 @@ vim = {
 
 require("generators").setup()
 
+-- Exactly two generating commands; the remaining commands are help/root utilities.
+for _, suffix in ipairs({ "Class", "Struct", "Enum", "Header", "Source", "Interface", "Test" }) do
+    assert(not commands["CreateCpp" .. suffix], "removed command was registered: " .. suffix)
+end
+for command in pairs(commands) do
+    if command:match("^CreateCpp") then assert(command == "CreateCpp") end
+end
+
 -- Public help aliases and the command list must remain callable.
 local output = {}
 local original_print = print
 print = function(message) table.insert(output, message) end
 commands.CreateHelp({})
+local help_section
+package.loaded["devkit.help"] = { open = function(section) help_section = section end }
 commands.GeneratorHelp({})
+package.loaded["devkit.help"] = nil
 commands.GeneratorList({})
 commands.CreateRoot({})
 print = original_print
-assert(output[1] == output[2], "GeneratorHelp must alias CreateHelp")
-assert(output[1]:find(":CreateCppClass", 1, true))
+assert(help_section == "generation", "GeneratorHelp must open the generation section")
+assert(output[1]:find(":CreateCpp", 1, true) and output[1]:find("--test", 1, true))
 local listed = {}
-for command in output[3]:gmatch("[^\n]+") do
+for command in output[2]:gmatch("[^\n]+") do
     assert(commands[command], "listed command is not registered: " .. command)
     listed[command] = true
 end
 for command in pairs(commands) do assert(listed[command], "command is not listed: " .. command) end
-assert(output[4]:find(temp, 1, true), "CreateRoot must show the captured project root")
+assert(output[3]:find(temp, 1, true), "CreateRoot must show the captured project root")
 
 local function run(command, ...)
     local previous = #notifications
@@ -124,21 +144,21 @@ local function content(filename)
     return result
 end
 
--- Together: explicit directory overrides layout, creates pair.
-run("CreateCppClass", "-n", "Player", "-hs", "Engine/")
+-- Together: explicit base creates a pair.
+run("CreateCpp", "-c", "-n", "Player", "-p", "Engine/")
 assert(content("Engine/Player.hpp"):find("class Player", 1, true))
 assert(content("Engine/Player.cpp"):find('#include "Player.hpp"', 1, true))
 
 -- --split + --subdir: maintains hierarchy.
-run("CreateCppClass", "-n", "Renderer", "--split", "--subdir", "Graphics/")
+run("CreateCpp", "-c", "-n", "Renderer", "--split", "--subdir", "Graphics/")
 assert(content("include/Graphics/Renderer.hpp"))
 assert(content("src/Graphics/Renderer.cpp"):find('#include "../../include/Graphics/Renderer.hpp"', 1, true))
 
 -- Only one side, explicit root, and arbitrary directories.
-run("CreateCppClass", "-n", "HeaderOnly", "-h", ".")
+run("CreateCpp", "-c", "-n", "HeaderOnly", "-ho", "-p", ".")
 assert(content("HeaderOnly.hpp"))
 assert(not exists(temp .. "/HeaderOnly.cpp"))
-run("CreateCppClass", "-n", "ImplementationOnly", "-s", "src/custom/")
+run("CreateCpp", "-c", "-n", "ImplementationOnly", "-so", "-p", "src/custom/")
 assert(content("src/custom/ImplementationOnly.cpp"))
 assert(not exists(temp .. "/src/custom/ImplementationOnly.hpp"))
 
@@ -146,52 +166,58 @@ assert(not exists(temp .. "/src/custom/ImplementationOnly.hpp"))
 local cfg = assert(io.open(temp .. "/.nvim-generator.json", "wb"))
 cfg:write('{"cpp":{"layout":"split","paths":{"header":"api","source":"implementation"}}}')
 cfg:close()
-run("CreateCppClass", "-n", "FromConfig")
+run("CreateCpp", "-c", "-n", "FromConfig")
 assert(content("api/FromConfig.hpp"))
 assert(content("implementation/FromConfig.cpp"))
 
--- Explicit -hs . wins over project layout split.
-run("CreateCppClass", "-n", "AtRoot", "-hs", ".")
+-- Explicit together overrides project layout split.
+run("CreateCpp", "-c", "-n", "AtRoot", "-tg", "-p", ".")
 assert(content("AtRoot.hpp"))
 assert(content("AtRoot.cpp"))
 
--- Split and individual distinct explicit locations.
-run("CreateCppClass", "-n", "Different", "-h", "vendor/inc", "-s", "engine/code")
+-- Configured distinct header/source roots keep relative includes correct.
+cfg = assert(io.open(temp .. "/.nvim-generator.json", "wb"))
+cfg:write('{"cpp":{"layout":"split","paths":{"header":"vendor/inc","source":"engine/code"}}}')
+cfg:close()
+run("CreateCpp", "-c", "-n", "Different")
 assert(content("vendor/inc/Different.hpp"))
 assert(content("engine/code/Different.cpp"):find('../../vendor/inc/Different.hpp', 1, true))
+cfg = assert(io.open(temp .. "/.nvim-generator.json", "wb"))
+cfg:write('{"cpp":{"layout":"split","paths":{"header":"api","source":"implementation"}}}')
+cfg:close()
 
--- Other commands.
-run("CreateCppStruct", "-n", "Vec2", "-h", "Math/")
+-- Other types use the same public command.
+run("CreateCpp", "-s", "-n", "Vec2", "-tg", "-p", "Math/")
 assert(content("Math/Vec2.hpp"):find("struct Vec2", 1, true))
-run("CreateCppEnum", "-n", "State")
+run("CreateCpp", "-e", "-n", "State")
 assert(content("api/State.hpp"):find("enum class State", 1, true))
-run("CreateCppInterface", "-n", "IWorld")
+run("CreateCpp", "-i", "-n", "IWorld")
 assert(content("api/IWorld.hpp"):find("virtual ~IWorld()", 1, true))
-run("CreateCppHeader", "-n", "Common")
+run("CreateCpp", "--header", "-n", "Common")
 assert(content("api/Common.hpp"):find("#pragma once", 1, true))
-run("CreateCppSource", "-n", "Utilities")
+run("CreateCpp", "--source", "-n", "Utilities")
 assert(content("implementation/Utilities.cpp"))
-run("CreateCppTest", "-n", "World")
+run("CreateCpp", "--test", "-n", "World")
 assert(content("implementation/WorldTest.cpp"):find("TEST(WorldTest", 1, true))
 
 -- Files can't be overwritten.
 local original = content("AtRoot.hpp")
-local message = run("CreateCppClass", "-n", "AtRoot", "-hs", ".")
+local message = run("CreateCpp", "-c", "-n", "AtRoot", "-tg", "-p", ".")
 assert(message and message.level == vim.log.levels.ERROR)
 assert(content("AtRoot.hpp") == original)
 
 -- Paths outside of project are forbidden.
-message = run("CreateCppClass", "-n", "Bad", "-hs", "../outside")
+message = run("CreateCpp", "-c", "-n", "Bad", "-p", "../outside")
 assert(message and message.level == vim.log.levels.ERROR)
 assert(not exists(temp .. "/../outside/Bad.hpp"))
 
 -- --split and --together conflict; unknown args rejected.
-message = run("CreateCppClass", "-n", "Bad", "--split", "--together")
+message = run("CreateCpp", "-c", "-n", "Bad", "--split", "--together")
 assert(message and message.level == vim.log.levels.ERROR)
 
 -- Root remains captured despite shell cwd changes.
 cwd = temp .. "/Engine"
-run("CreateCppClass", "-n", "RootFixed", "-hs", ".")
+run("CreateCpp", "-c", "-n", "RootFixed", "-tg", "-p", ".")
 assert(content("RootFixed.hpp"))
 assert(not exists(temp .. "/Engine/RootFixed.hpp"))
 

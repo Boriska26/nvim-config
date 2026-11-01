@@ -1,3 +1,4 @@
+local keys = require("devkit.keymaps").signature
 require("lsp_signature").setup({
     bind = true,
     floating_window = true,
@@ -5,6 +6,6 @@ require("lsp_signature").setup({
     doc_lines = 3,
     max_height = 12,
     handler_opts = { border = "rounded" },
-    toggle_key = "<C-k>",
-    select_signature_key = "<C-l>",
+    toggle_key = keys.toggle_key.lhs,
+    select_signature_key = keys.select_signature_key.lhs,
 })

@@ -1,57 +1,60 @@
 local M = {}
-
+local paths = require("generators.paths")
 local defaults = {
-    layout = "together",
-    paths = { header = "include", source = "src" },
-    extensions = { header = ".hpp", source = ".cpp" },
+    cpp = { layout = "together", paths = { header = "include", source = "src" },
+        extensions = { header = ".hpp", source = ".cpp" } },
+    csharp = { defaultAccess = "public" },
 }
-
+local function object(value)
+    return type(value) == "table" and not (vim.islist and vim.islist(value))
+end
 function M.load(root)
     local result = vim.deepcopy(defaults)
-    local filepath = root .. "/.nvim-generator.json"
-    if vim.fn.filereadable(filepath) == 0 then return result end
-
+    local filepath = paths.file(root, ".nvim-generator.json")
+    if vim.fn.filereadable(filepath) == 0 then
+        if vim.uv.fs_stat(filepath) then return nil, "Конфигурация недоступна или не является файлом: " .. filepath end
+        return result
+    end
     local ok, document = pcall(function()
-        return vim.json.decode(table.concat(vim.fn.readfile(filepath), "\n"))
+        local text = table.concat(vim.fn.readfile(filepath), "\n")
+        assert(text:match("^%s*{"), "ожидается JSON-объект")
+        return vim.json.decode(text)
     end)
-    if not ok or type(document) ~= "table" then
-        return nil, "Некорректный JSON в " .. filepath
+    if not ok or not object(document) then return nil, "Некорректный JSON в " .. filepath end
+    for _, language in ipairs({ "cpp", "csharp" }) do
+        if document[language] ~= nil and not object(document[language]) then
+            return nil, language .. " должен быть JSON-объектом"
+        end
     end
-
     local cpp = document.cpp or {}
-    if type(cpp) ~= "table" then return nil, "cpp должен быть объектом JSON" end
-
     if cpp.layout ~= nil then
-        if cpp.layout ~= "split" and cpp.layout ~= "together" then
-            return nil, 'cpp.layout может быть только "split" или "together"'
-        end
-        result.layout = cpp.layout
+        if cpp.layout ~= "split" and cpp.layout ~= "together" then return nil, "cpp.layout: ожидается split или together" end
+        result.cpp.layout = cpp.layout
     end
-
-    if cpp.paths ~= nil then
-        if type(cpp.paths) ~= "table" then return nil, "cpp.paths должен быть объектом" end
-        for _, key in ipairs({ "header", "source" }) do
-            if cpp.paths[key] ~= nil then result.paths[key] = cpp.paths[key] end
-        end
-    end
-    if cpp.extensions ~= nil then
-        if type(cpp.extensions) ~= "table" then return nil, "cpp.extensions должен быть объектом" end
-        for _, key in ipairs({ "header", "source" }) do
-            if cpp.extensions[key] ~= nil then result.extensions[key] = cpp.extensions[key] end
+    for _, field in ipairs({ "paths", "extensions" }) do
+        if cpp[field] ~= nil then
+            if not object(cpp[field]) then return nil, "cpp." .. field .. " должен быть объектом" end
+            for _, key in ipairs({ "header", "source" }) do
+                if cpp[field][key] ~= nil then result.cpp[field][key] = cpp[field][key] end
+            end
         end
     end
-
-    local paths = require("generators.paths")
     for _, key in ipairs({ "header", "source" }) do
-        local cleaned, err = paths.clean(result.paths[key])
+        local cleaned, err = paths.clean(result.cpp.paths[key])
         if not cleaned then return nil, "cpp.paths." .. key .. ": " .. err end
-        result.paths[key] = cleaned
-        local ext = result.extensions[key]
+        result.cpp.paths[key] = cleaned
+        local ext = result.cpp.extensions[key]
         if type(ext) ~= "string" or not ext:match("^%.[a-zA-Z0-9]+$") then
             return nil, "Неправильное расширение cpp.extensions." .. key
         end
     end
+    local csharp = document.csharp or {}
+    if csharp.defaultAccess ~= nil then
+        if csharp.defaultAccess ~= "public" and csharp.defaultAccess ~= "internal" then
+            return nil, "csharp.defaultAccess: ожидается public или internal"
+        end
+        result.csharp.defaultAccess = csharp.defaultAccess
+    end
     return result
 end
-
 return M

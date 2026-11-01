@@ -22,7 +22,7 @@ function M.clean(value)
             if item:match("[%. ]$") then
                 return nil, "Папка не может заканчиваться точкой или пробелом (Windows): " .. item
             end
-            local upper = item:upper()
+            local upper = (item:match("^([^.]*)") or item):upper()
             if upper:match("^CON$") or upper:match("^PRN$") or upper:match("^AUX$") or
                 upper:match("^NUL$") or upper:match("^COM[1-9]$") or upper:match("^LPT[1-9]$") then
                 return nil, "Зарезервированное имя Windows: " .. item
@@ -42,6 +42,32 @@ end
 function M.file(root, relative)
     if relative == "." then return root end
     return root .. "/" .. relative
+end
+
+function M.within(root, directory)
+    local function normalize(path)
+        path = path:gsub("\\", "/"):gsub("/+$", "")
+        if vim.fn.has("win32") == 1 then path = path:lower() end
+        return path
+    end
+    local actual_root = vim.uv.fs_realpath(root)
+    local actual_dir = vim.uv.fs_realpath(directory)
+    if not actual_root or not actual_dir then return false end
+    local a, b = normalize(actual_root), normalize(actual_dir)
+    return a == b or b:sub(1, #a + 1) == a .. "/"
+end
+
+-- Check the nearest existing ancestor before mkdir, so a symlink cannot create
+-- directories outside the captured project root before being rejected.
+function M.safe_parent(root, directory)
+    local ancestor = directory
+    while not vim.uv.fs_stat(ancestor) do
+        local parent = vim.fn.fnamemodify(ancestor, ":h")
+        if parent == ancestor then return nil, "Не найден существующий родитель: " .. directory end
+        ancestor = parent
+    end
+    if not M.within(root, ancestor) then return nil, "Каталог выходит за пределы проекта (symlink): " .. directory end
+    return true
 end
 
 function M.relative_file_include(source_dir, header_file)

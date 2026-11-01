@@ -9,5 +9,8 @@
       "header": ".hpp",
       "source": ".cpp"
     }
+  },
+  "csharp": {
+    "defaultAccess": "public"
   }
 }
