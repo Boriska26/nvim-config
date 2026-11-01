@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+help() {
+    printf '\033[1;36mNVIMHK — Neovim hotkeys & generators\033[0m\n'
+    printf 'Использование: nvimhk [опция]\n\n'
+    printf '  %-16s %s\n' \
+      --basic 'Основные команды' \
+      --edit 'Редактирование' \
+      --search 'Поиск и Telescope' \
+      --csharp 'Roslyn и IntelliSense' \
+      --window 'Буферы и окна' \
+      --terminal 'Терминал' \
+      --tree 'Дерево файлов' \
+      --create 'Команды генератора файлов' \
+      --help 'Справка'
+}
+show() {
+case "$1" in
+ --basic) cat <<'EOF'
+=== ОСНОВЫ ===
+i         Ввод текста       Esc       NORMAL
+:w        Сохранить         :wq       Сохранить и выйти
+:q        Закрыть окно      :q!       Выйти без сохранения
+u         Отменить          Ctrl+r    Повторить
+EOF
+;;
+ --edit) cat <<'EOF'
+=== РЕДАКТИРОВАНИЕ ===
+v / V          Выделение символов / строк
+d / y / p      Вырезать / копировать / вставить
+ciw / diw      Изменить / удалить слово
+Space k        Строку вверх
+Space j        Строку вниз
+Space k/j      Переместить выделенные строки
+Ctrl+s         Сохранить; форматировать C# при наличии Roslyn
+EOF
+;;
+ --search) cat <<'EOF'
+=== ПОИСК ===
+Space ff       Файлы
+Space fg       Текст проекта
+Space fb       Буферы
+Space fs       Символы текущего файла
+/слово         Поиск в файле; n/N — далее/назад
+EOF
+;;
+ --csharp) cat <<'EOF'
+=== C# ===
+gd / gr         Определение / ссылки
+K               Описание символа
+Space rn        Переименовать
+Space ca        Code action
+Space d         Диагностика
+Ctrl+Space      Подсказки в INSERT
+Ctrl+k         Параметры метода
+Ctrl+l         Другая перегрузка
+EOF
+;;
+ --window) cat <<'EOF'
+=== ОКНА ===
+]b / [b         Следующий / предыдущий буфер
+Space bd        Удалить текущий буфер
+Ctrl+w h/j/k/l   Перемещение между окнами
+:split/:vsplit  Разделить окно
+EOF
+;;
+ --terminal) cat <<'EOF'
+=== ТЕРМИНАЛ ===
+Space tt       Показать/скрыть постоянный терминал
+Esc Esc        Перейти в NORMAL из терминала
+exit           Завершить оболочку
+EOF
+;;
+ --tree) cat <<'EOF'
+=== ДЕРЕВО ФАЙЛОВ ===
+Space e        Открыть/закрыть дерево
+a              Создать файл/каталог
+r              Переименовать
+d              Удалить
+Enter          Открыть файл
+g?             Все команды дерева
+EOF
+;;
+ --create) cat <<'EOF'
+=== ГЕНЕРАТОР C++ ===
+:CreateCppClass -n Player -hs Engine/
+:CreateCppClass -n Player -h include/ -s src/
+:CreateCppClass -n Player --split --subdir Engine/
+:CreateCppStruct -n Vector2 -h Math/
+:CreateCppEnum -n State
+:CreateCppHeader -n Common
+:CreateCppSource -n Helpers
+:CreateCppInterface -n IRenderer
+:CreateCppTest -n Player
+
+-n NAME        Имя класса / файла
+-h DIR         Заголовок, необязательный каталог
+-s DIR         Исходник, необязательный каталог
+-hs DIR        Оба файла, необязательный каталог
+--split        Заголовок include/, исходник src/
+--together     Файлы рядом
+--subdir DIR   Подкаталог для режима layout
+.              Корень каталога запуска nvim .
+:CreateHelp    Полная справка внутри Neovim
+:CreateRoot    Проверить корень генератора
+EOF
+;;
+ *) help; exit 2;;
+esac
+}
+if [[ "${1:---help}" == "--help" || "${1:---help}" == '-h' ]]; then
+ help
+else
+ show "$1"
+fi

@@ -1,0 +1,13 @@
+{
+  "cpp": {
+    "layout": "split",
+    "paths": {
+      "header": "include",
+      "source": "src"
+    },
+    "extensions": {
+      "header": ".hpp",
+      "source": ".cpp"
+    }
+  }
+}

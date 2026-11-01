@@ -1,0 +1,8 @@
+# Generated local files, swap, compiled Lua, and plugin state
+*.swp
+*.swo
+*.luac
+.DS_Store
+.nvimlog
+*.bak
+# Project-specific configuration belongs in the PROJECT, not in Neovim config
