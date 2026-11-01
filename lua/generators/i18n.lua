@@ -1,4 +1,4 @@
--- One shared text layer for generator commands, validation and help.
+-- Shared DevKit text layer for generators, help and diagnostics.
 local M = {}
 local messages = {
     generator_error = { "Генератор: %s", "Generator: %s" },
@@ -60,5 +60,33 @@ function M.get(key, ...)
 end
 function M.field(value, key)
     return M.pick(value[key], value[key .. "_en"] or value[key])
+end
+function M.extend(entries)
+    for key, value in pairs(entries) do
+        assert(type(value[1]) == "string" and type(value[2]) == "string", "RU/EN text required: " .. key)
+        messages[key] = value
+    end
+end
+function M.set_language(language)
+    if language ~= "ru" and language ~= "en" then return false end
+    vim.g.devkit_language = language
+    vim.api.nvim_exec_autocmds("User", { pattern = "DevKitLanguageChanged", modeline = false })
+    return true
+end
+function M.setup()
+    M.extend({
+        language_command = { "Язык DevKit: ru/en", "DevKit language: ru/en" },
+        language_invalid = { "Используй :DevKitLang ru или :DevKitLang en", "Use :DevKitLang ru or :DevKitLang en" },
+    })
+    vim.api.nvim_create_user_command("DevKitLang", function(opts)
+        if opts.args == "" then print(M.language()); return end
+        if not M.set_language(opts.args) then vim.notify(M.get("language_invalid"), vim.log.levels.ERROR) end
+    end, { nargs = "?", desc = M.get("language_command"), complete = function(lead)
+        local result = {}
+        for _, language in ipairs({ "ru", "en" }) do
+            if language:sub(1, #lead) == lead then result[#result + 1] = language end
+        end
+        return result
+    end })
 end
 return M

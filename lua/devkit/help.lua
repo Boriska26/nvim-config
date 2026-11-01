@@ -59,7 +59,7 @@ local function content(section)
         lines[#lines + 1] = dependency.label .. ": " .. (available and "доступен" or unavailable)
     end
     if section.dependencies then lines[#lines + 1] = "" end
-    append_text(lines, section.text)
+    append_text(lines, i18n.field(section, "text"))
 
     local keys = require("devkit.keymaps")
     local modes = { n = "N", i = "I", x = "V", t = "T" }

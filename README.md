@@ -28,8 +28,9 @@ lua/devkit/
   help.lua                   Floating help window, navigation and Ex commands
   help_data.lua              Section content and section commands
   keymaps.lua                Shared shortcut registry for configuration and help
+  doctor/                    Checks, context, async runner, results, UI and recommendations
 lua/plugins/
-  init.lua                   Existing plugin list, loaded with vim.pack.add
+  init.lua / specs.lua       Shared plugin inventory, loaded with vim.pack.add
   mason.lua                  Mason registries and environment
   roslyn.lua                 C# LSP capabilities and formatting on save
   telescope.lua              Fuzzy search setup
@@ -234,17 +235,19 @@ and template flags; this version's shared completion does not complete path valu
 Russian (`ru`) is the default. To switch to English inside a running Neovim:
 
 ```vim
-:let g:devkit_language = 'en'
+:DevKitLang en
 :CreateDevOps --help
 ```
 
 To switch back to Russian:
 
 ```vim
-:let g:devkit_language = 'ru'
+:DevKitLang ru
 ```
 
-Close and reopen an existing help window to display the selected language.
+`:DevKitLang` without arguments prints the current language. Existing direct
+`g:devkit_language` settings remain supported. Reopen ordinary help to refresh it;
+an open Doctor updates immediately after `:DevKitLang ru/en`, without rerunning probes.
 
 To keep English after restarting Neovim, add this **at the top of `init.lua`,
 before the first `require(...)`**:
@@ -330,6 +333,7 @@ window. Each row shows the command that opens its section directly:
 | Terminal | `:TerminalHelp` |
 | Git | `:GitHelp` |
 | Appearance | `:AppearanceHelp` |
+| Doctor | `:DoctorHelp` |
 
 Generation reads metadata from the same registry:
 `DevKitHelp → Generation → C++ / C# / DevOps → commands, parameters and examples`.
@@ -357,6 +361,71 @@ share identical category metadata. `catalog.unregister(command)` removes the
 command and metadata; removing the last command removes its category. Commands
 deleted outside the registry are omitted on the next read. The existing help UI
 is reused; flag schemas also supply command completion and help parameters.
+
+## Environment diagnostics — `:DevKitDoctor`
+
+Run `:DevKitDoctor` to open a scratch floating window. Repeated calls reuse and
+refresh it. Use `j`/`k`, arrows and Ctrl-d/u to scroll, `r` to rerun, Enter for the
+selected check's details and installation advice, Backspace/`h` for the list,
+`?` for keys, and `q`/Esc to close. `:DoctorHelp` is also listed in `:DevKitHelp`.
+The working file, unsaved changes, cwd, clipboard contents and configuration are
+preserved. Checks never generate project files or run project builds.
+
+Checks cover Core, C#, C++ and DevOps on Linux and Windows:
+
+- **Core:** Neovim 0.12.6+, Git, ripgrep, optional fd/fdfind and clipboard,
+  `vim.pack`, the shared plugin inventory, module syntax/loading and actual
+  registration of generator/help commands. Plugin installation, activation and
+  loaded configuration/commands are checked separately. Lazy dependencies are
+  reported as active, without pretending their lazy functionality was exercised.
+- **C#:** dotnet on PATH, installed SDK versions (`dotnet --list-sdks`), executable
+  Roslyn command and configured format-on-save. Roslyn is not started. No separate
+  formatter or debugger is required by this configuration.
+- **C++:** a usable g++/clang++/cl version probe, CMake and clang-format. MSVC also
+  needs the Developer Command Prompt/Developer PowerShell INCLUDE/LIB environment.
+  C++ LSP and CTest are skipped when unconfigured. A loaded coreclr DAP adapter is
+  inspected only if present; this repository does not install a debugger.
+- **DevOps:** Git, Docker CLI, a timed Engine availability query, Compose, Bash,
+  PowerShell (pwsh or Windows PowerShell), SSH, and optional glab/kubectl/helm/terraform.
+
+`ERROR` means a required Core dependency or DevKit configuration is broken.
+`WARNING` marks an unavailable optional workflow or unverified clipboard provider.
+`SKIPPED` means a tool/integration is inapplicable or not configured. Missing C++
+compilers, .NET SDKs or Docker do not make Core fail. An unreachable Docker Engine
+may mean service state, permissions or context; Doctor does not guess which one.
+
+The runner uses argv arrays and `vim.system`, at most **two concurrent processes**,
+a **2500 ms per-process timeout** and a hard watchdog. Rerun/close cancels owned
+probes. It does not install packages, alter PATH, access clipboard contents, start
+or stop services, launch containers, compile code or execute generated scripts.
+Only bounded version tokens are extracted; raw stdout/stderr, SDK paths and
+sensitive environment values are never shown, including in details. Clipboard
+availability is inspected without a round-trip. This is an environment check,
+not proof that a project builds or a service configuration is production-ready.
+
+Docker's read-only queries are documented by Docker:
+[`docker version`](https://docs.docker.com/reference/cli/docker/version/) and
+[`docker compose version --short`](https://docs.docker.com/reference/cli/docker/compose/version/).
+Windows MSVC setup is described in Microsoft's
+[command-line tools documentation](https://learn.microsoft.com/en-us/cpp/build/building-on-the-command-line).
+Recommendations distinguish Linux package managers from Windows official
+installers/verified packages and never run an installation command.
+
+### Быстрый старт Doctor (RU)
+
+```vim
+:DevKitLang ru
+:DevKitDoctor
+```
+
+`r` повторяет проверки, Enter открывает объяснение и рекомендации для текущей ОС,
+`?` показывает клавиши, Backspace возвращает список, `q`/Esc закрывают окно.
+Для английского выполни `:DevKitLang en` — открытый Doctor перерисуется сразу.
+Отсутствие Docker, SDK или C++ компилятора — предупреждение, а ненастроенные
+отладчик/LSP/CTest пропускаются. Doctor ничего не устанавливает, не меняет
+пользовательские файлы и не запускает службы или контейнеры. Сырые системные
+логи и переменные окружения не выводятся. Linux проверен отдельно; Windows
+покрывается имитацией в тестах и требует дополнительной проверки на реальной ОС.
 
 ## Requirements and Checks
 

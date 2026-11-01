@@ -1,5 +1,6 @@
 -- Content has no plugin imports. Shared keymaps and generator metadata are read lazily.
 return {
+    -- Doctor is appended below to keep the existing category order stable.
     {
         id = "generation", title = "Generation", command = "GeneratorHelp",
         generator = true,
@@ -116,6 +117,29 @@ Treesitter запускается для cs/lua/json/yaml/sh, если уста�
 Подсветка текущей строки и номера, цветные разделители и winbar терминала.
 Специальных сочетаний смены темы в конфигурации нет.
 Пример: :set relativenumber? показывает текущее значение без изменения настроек.
+]],
+    },
+    {
+        id = "doctor", title = "Doctor", command = "DoctorHelp",
+        text = [[
+Ex :DevKitDoctor      Диагностика окружения в отдельном окне
+Ex :DevKitLang ru/en  Язык DevKit; открытый Doctor обновляется сразу
+В окне: r — повторить, Enter — подробности и рекомендации, ? — клавиши.
+j/k, стрелки, Ctrl-d/u — прокрутка; Backspace/h — список; q/Esc — закрыть.
+Core проверяет конфигурацию и обязательные зависимости. C++/C#/DevOps необязательны.
+Отсутствующие отладчик, C++ LSP и CTest не считаются проблемой, если они не настроены.
+Проверки ничего не устанавливают, не создают файлы и не запускают службы.
+Пример: :DevKitDoctor, выбери предупреждение, Enter, затем Backspace.
+]],
+        text_en = [[
+Ex :DevKitDoctor      Environment diagnostics in a separate window
+Ex :DevKitLang ru/en  DevKit language; an open Doctor refreshes immediately
+In the window: r — rerun, Enter — details and fixes, ? — keys.
+j/k, arrows, Ctrl-d/u — scroll; Backspace/h — list; q/Esc — close.
+Core checks the configuration and required dependencies. C++/C#/DevOps are optional.
+Debugger, C++ LSP and CTest are not problems when those integrations are not configured.
+Checks do not install software, create project files or start services.
+Example: :DevKitDoctor, select a warning, Enter, then Backspace.
 ]],
     },
 }

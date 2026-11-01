@@ -1,6 +1,18 @@
 param([string]$Section = "--help")
 
 switch ($Section) {
+    "--doctor" {
+@'
+:DevKitDoctor   Диагностика Core, C#, C++ и DevOps
+:DevKitLang ru  Русский; :DevKitLang en — английский
+r              Повторить проверки
+Enter          Подробности и рекомендации
+?              Клавиши окна
+Backspace      Вернуться к списку
+q / Esc        Закрыть
+Проверки не устанавливают программы и не запускают службы/контейнеры.
+'@
+    }
     "--create" {
 @'
 === ГЕНЕРАТОРЫ C++ / C# / DevOps ===
@@ -27,7 +39,7 @@ switch ($Section) {
 :CreateDevOps --help
 DevOps: один вызов — один файл, без запуска и chmod +x.
 -n разрешён только для Bash, PowerShell, systemd и Nginx.
-Язык генераторов: vim.g.devkit_language = "ru" / "en".
+Язык: :DevKitLang ru / :DevKitLang en.
 
 -n / --name NAME          Имя типа / файла
 -p / --path DIR           Базовый каталог от корня запуска Neovim
@@ -50,6 +62,7 @@ DevOps: один вызов — один файл, без запуска и chmo
 @'
 NVIMHK — доступные разделы
 --create       Создание файлов Neovim
+--doctor       Диагностика окружения
 
 Внутри Neovim: :CreateHelp
 '@
