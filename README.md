@@ -13,6 +13,168 @@ A personal Neovim configuration built for C#, C++, and DevOps development, with 
 - **Built-in Help** — `:DevKitHelp` opens an interactive reference to the configured tools and shortcuts.
 - **Cross-platform Goal** — configuration designed to support Linux and Windows.
 
+## Installation / Установка
+
+Requirements: Linux with Bash and GNU coreutils, or Windows with Windows PowerShell
+5.1 / PowerShell 7; **Neovim 0.12.6+ and Git on PATH**. Install these yourself using
+your distribution's package manager or official releases. Windows users can use
+an official installer or a verified winget/Scoop/Chocolatey package, then restart
+the terminal. Docker, .NET SDK and CMake are optional and are not installed or
+required by the installer. No administrator/root privileges are needed for the
+usual per-user destination.
+
+Clone this official repository into a working directory, review the installer,
+and run it locally (do not pipe an unknown download into a shell):
+
+```bash
+git clone https://github.com/Boriska26/nvim-config nvim-config-installer
+cd nvim-config-installer
+bash install.sh --lang en
+```
+
+On Windows, clone the same repository and run from PowerShell:
+
+```powershell
+.\install.ps1 -Lang en
+```
+
+Use `bash install.sh --help` / `.\install.ps1 -Help` for options. `--lang ru`
+/ `-Lang ru` select Russian. A reliably detected Russian locale/UI culture selects
+Russian automatically; other or unknown environments default to English.
+The PowerShell installer is UTF-8 **with BOM** so Windows PowerShell 5.1 reads
+Russian text correctly. Follow your organization's script execution policy;
+the installer does not change it.
+
+### Isolated installation (default)
+
+| Platform | Default config destination | Override |
+| --- | --- | --- |
+| Linux | `~/.config/nvim-devkit` | `$XDG_CONFIG_HOME/nvim-devkit` |
+| Windows | `%LOCALAPPDATA%\nvim-devkit` | `$env:XDG_CONFIG_HOME\nvim-devkit` |
+
+These use Neovim's [standard path and NVIM_APPNAME mechanism](https://neovim.io/doc/user/starting.html#standard-path).
+No existing `nvim` configuration, shell profile, global Git configuration or
+system PATH is edited. An inherited `NVIM_APPNAME` does not change the installer
+destination. Config roots must be absolute paths.
+
+Launch on Linux:
+
+```bash
+NVIM_APPNAME=nvim-devkit nvim .
+```
+
+Launch on Windows PowerShell:
+
+```powershell
+$env:NVIM_APPNAME = "nvim-devkit"
+nvim .
+# After finishing, clear the override for subsequent normal Neovim launches:
+Remove-Item Env:NVIM_APPNAME
+```
+
+If `NVIM_APPNAME` already had a value, restore that value instead of removing it.
+The isolated app also gets its own Neovim data/state/cache locations according to
+Neovim's standard paths. The installer does not change directory before launching
+because it never launches the editor; launch from the project you want to edit.
+
+A launcher is created **inside the new configuration**:
+
+- Linux: `<config>/nvim-devkit/.devkit-launch/nvim-devkit`.
+- Windows: `<config>\nvim-devkit\.devkit-launch\nvim-devkit.ps1`.
+
+Run the printed launcher path directly, quoting paths containing spaces. The Linux
+launcher sets `NVIM_APPNAME` only for its child process; the Windows launcher
+restores the previous process environment value when Neovim exits. No PATH edits
+or global launcher installation are performed.
+For a convenient `nvim-devkit` command in the current Bash session only:
+
+```bash
+nvim-devkit() { "${XDG_CONFIG_HOME:-$HOME/.config}/nvim-devkit/.devkit-launch/nvim-devkit" "$@"; }
+nvim-devkit .
+```
+
+PowerShell equivalent (use the actual printed config path if overriding XDG):
+
+```powershell
+function nvim-devkit { & "$env:LOCALAPPDATA\nvim-devkit\.devkit-launch\nvim-devkit.ps1" @args }
+nvim-devkit .
+```
+
+Do not add these functions to a shell profile unless you choose to do so yourself.
+
+### Main installation (explicit opt-in)
+
+```bash
+bash install.sh --main --lang en
+```
+
+```powershell
+.\install.ps1 -Main -Lang en
+```
+
+This targets `<config-root>/nvim`. **Any existing destination is refused**, even
+an empty directory, file or symlink. Move it to a backup yourself first, or choose
+the default isolated mode. Existing DevKit installations are also refused:
+there is no automatic update, deletion, backup or force-overwrite mode.
+Launch the main installation with `NVIM_APPNAME=nvim nvim` on Linux, or set
+`$env:NVIM_APPNAME = "nvim"` before `nvim` on Windows and clear/restore it afterward.
+
+### Source selection, safety and first launch
+
+The installer queries tags from `https://github.com/Boriska26/nvim-config`, chooses
+the highest stable numeric tag (`vX.Y.Z` or `X.Y.Z`; prerelease/other tag formats
+are excluded), and clones that ref. These are published Git tags, not a claim of
+GitHub release certification. **If no matching stable tags exist, it explicitly
+warns and clones `main`**, which is a development snapshot. A failed tag query
+aborts rather than silently falling back to `main`.
+
+A private staging directory is created next to the destination. Clone/validation
+failures remove only that staging tree; an existing or concurrently created
+user destination is never replaced. Publication is an atomic directory move
+without replacement on the same filesystem. Git hooks are disabled for cloning;
+no downloaded scripts, Lua configuration or installers are executed. Temporary
+parent config directories may remain if they had to be created before a failure.
+The scripts never run Neovim except `nvim --version` and do not load plugins.
+
+On your **first deliberate launch**, this configuration calls the built-in
+`vim.pack.add(require("plugins.specs"))`. Missing plugins trigger Neovim's initial
+installation confirmation. Review and accept it only when you want Git downloads;
+network access is then needed. The lockfile records plugin versions. The installer
+neither answers this confirmation nor starts background plugin downloads.
+Successful cloning alone does not prove plugin/server functionality.
+After startup and plugin installation, run:
+
+```vim
+:DevKitLang en
+:DevKitDoctor
+:DevKitHelp
+```
+
+### Краткая инструкция (RU)
+
+```bash
+bash install.sh --lang ru          # Linux: отдельный nvim-devkit
+bash install.sh --main --lang ru   # только если каталог nvim отсутствует
+```
+
+```powershell
+.\install.ps1 -Lang ru
+.\install.ps1 -Main -Lang ru
+```
+
+Изолированный режим не меняет обычную конфигурацию. На Linux учитывается
+`XDG_CONFIG_HOME`, на Windows — `XDG_CONFIG_HOME` или `LOCALAPPDATA`.
+Любой существующий целевой путь защищён: резервную копию делай самостоятельно.
+При отсутствии стабильного тега будет явно выбрана ветка `main`; ошибки сети
+прерывают установку с очисткой только временного клона.
+Запуск: `NVIM_APPNAME=nvim-devkit nvim` на Linux; в PowerShell задай
+`$env:NVIM_APPNAME = "nvim-devkit"`, запусти `nvim`, затем выполни
+`Remove-Item Env:NVIM_APPNAME` (или восстанови прежнее значение).
+Launcher внутри `.devkit-launch` делает это без постоянного изменения окружения.
+Первый обычный запуск предлагает установить плагины через `vim.pack`; установщик
+их не скачивает. После установки плагинов: `:DevKitLang ru`, `:DevKitDoctor`,
+`:DevKitHelp`. Программы и службы автоматически не устанавливаются и не запускаются.
+
 ## Configuration Layout
 
 `init.lua` loads modules in dependency order:
