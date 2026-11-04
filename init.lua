@@ -26,3 +26,15 @@ require("config.keymaps")
 
 -- Корень генератора фиксируется в текущем каталоге запуска Neovim.
 require("generators").setup()
+
+-- Необязательные настройки этой машины загружаются после общих модулей.
+-- Путь берётся из конфигурации Neovim, а не из текущего проекта.
+local local_config = vim.fs.joinpath(vim.fn.stdpath("config"), "local.lua")
+if vim.uv.fs_stat(local_config) then
+    local ok, err = pcall(dofile, local_config)
+    if not ok then
+        vim.schedule(function()
+            vim.notify("Failed to load " .. local_config .. ":\n" .. tostring(err), vim.log.levels.ERROR)
+        end)
+    end
+end

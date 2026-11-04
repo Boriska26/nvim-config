@@ -4,5 +4,6 @@
 *.luac
 .DS_Store
 .nvimlog
+/local.lua
 *.bak
 # Project-specific configuration belongs in the PROJECT, not in Neovim config
